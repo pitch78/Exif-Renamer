@@ -44,10 +44,9 @@ def is_cropped(filename):
 
 
 media_files = [filename for filename in glob.glob(path_2_scan + "**", recursive=True) if is_media_file(filename)]
-# -2, to exclude . & ..
 total_files = len(media_files)
 
-if total_files <= 0:
+if total_files == 0:
     print("\nNo file to rename.\nDone.")
     quit(-2)
 
