@@ -3,13 +3,19 @@ import glob
 import os
 import pathlib
 import sys
+import re
 
 import exiftool
 
 PICTURES_DATE_TAG = "EXIF:DateTimeOriginal"
 VIDEOS_DATE_TAG = "MakerNotes:DateTimeOriginal"
+QUICKTIME_CREATION_DATE_TAG = "QuickTime:CreationDate"
+QUICKTIME_CREATE_DATE_TAG = "QuickTime:CreateDate"
+
 SHUTTER_COUNT_TAG = "MakerNotes:ShutterCount"
 FILENAME_TAG = "SourceFile"
+
+DJI_FILE_REGEX = r"\w{4}\d{4}"
 
 if len(sys.argv) != 2:
     print("usage:\nexif_rename path_2_scan")
@@ -22,7 +28,7 @@ print(f"path to scan: {path_2_scan}")
 
 
 def is_media_file(filename):
-    supported_types = {".jpg", ".jpeg", ".nef", ".heic", ".hif", ".mov", ".m4v", ".avi"}
+    supported_types = {".jpg", ".jpeg", ".nef", ".heic", ".hif", ".mov", ".m4v", ".mp4", ".avi"}
     filepath = pathlib.Path(filename)
     if not filepath.is_file():
         return False
@@ -34,6 +40,9 @@ def is_media_file(filename):
         return True
 
     if "IMG" in filepath.name:
+        return True
+
+    if re.search(DJI_FILE_REGEX, filepath.name):
         return True
 
     return False
@@ -52,7 +61,8 @@ if total_files == 0:
 
 with exiftool.ExifToolHelper() as et:
     print(f'\rscanning files ({total_files}) tags')
-    files_tags = et.get_tags(media_files, tags=[FILENAME_TAG, PICTURES_DATE_TAG, VIDEOS_DATE_TAG, SHUTTER_COUNT_TAG])
+    files_tags = et.get_metadata(media_files)
+    # files_tags = et.get_tags(media_files, tags=[FILENAME_TAG, PICTURES_DATE_TAG, VIDEOS_DATE_TAG, QUICKTIME_DATE_TAG, SHUTTER_COUNT_TAG])
     print("Done.")
     counter = 0
     for current_file_tags in files_tags:
@@ -64,6 +74,11 @@ with exiftool.ExifToolHelper() as et:
             media_datetime = current_file_tags[PICTURES_DATE_TAG]
         elif VIDEOS_DATE_TAG in infos_keys:
             media_datetime = current_file_tags[VIDEOS_DATE_TAG]
+        elif QUICKTIME_CREATION_DATE_TAG in infos_keys:
+            # notice that here, timezone's  offset needs to be removed.
+            media_datetime = current_file_tags[QUICKTIME_CREATION_DATE_TAG].split("+")[0]
+        elif QUICKTIME_CREATE_DATE_TAG in infos_keys:
+            media_datetime = current_file_tags[QUICKTIME_CREATE_DATE_TAG]
         else:
             continue
         new_name = media_datetime.replace(":", "").replace(" ", "_")
